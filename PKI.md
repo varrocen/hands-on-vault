@@ -103,7 +103,6 @@ openssl crl -in crl.pem -noout -text
 
 ## Generate intermediate CA
 
-<a name="request-certificates"/>
 
 Enable the pki secrets engine at the pki_int path:
 
@@ -173,7 +172,21 @@ vault write pki_int/config/urls \
      crl_distribution_points="$VAULT_ADDR/v1/pki_int/crl"
 ```
 
+<a name="request-certificates"/>
+
 ## Request certificates
+
+Execute the following command to request a new certificate for the `dev.example.com` domain:
+
+```
+vault write pki_int/issue/intermediate-ca common_name="dev.example.com" ttl="24h"
+```
+
+Execute the following command to request a new certificate for the `dev.wrong-example.com` domain (dont't work):
+
+```
+vault write pki_int/issue/intermediate-ca common_name="dev.wrong-example.com" ttl="24h"
+```
 
 <a name="revoke-certificates"/>
 
