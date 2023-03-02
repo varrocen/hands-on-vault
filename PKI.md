@@ -182,7 +182,7 @@ Execute the following command to request a new certificate for the `dev.example.
 vault write pki_int/issue/intermediate-ca common_name="dev.example.com" ttl="24h"
 ```
 
-Execute the following command to request a new certificate for the `dev.wrong-example.com` domain (dont't work):
+Execute the following command to request a new certificate for the `dev.wrong-example.com` domain (don't work):
 
 ```
 vault write pki_int/issue/intermediate-ca common_name="dev.wrong-example.com" ttl="24h"
@@ -191,6 +191,28 @@ vault write pki_int/issue/intermediate-ca common_name="dev.wrong-example.com" tt
 <a name="revoke-certificates"/>
 
 ## Revoke certificates
+
+If a certificate must be revoked, you can easily perform the revocation action which will cause the CRL to be regenerated.
+
+Get certificate serial number:
+
+```
+vault list pki_int/certs
+```
+
+To revoke a certificate, execute the following command:
+
+```
+vault write pki_int/revoke serial_number="<serial_number>"
+```
+
+Check CRL distribution points:
+
+```
+curl --header "X-Vault-Token: $VAULT_TOKEN" $VAULT_ADDR/v1/pki_int/crl --output crl-int.der
+openssl crl -inform DER -in crl-int.der -outform PEM -out crl-int.pem
+openssl crl -in crl-int.pem -noout -text
+```
 
 <a name="rotate-root-ca"/>
 
