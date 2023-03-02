@@ -34,10 +34,10 @@ Enable the pki secrets engine at the pki path:
 vault secrets enable pki
 ```
 
-Tune the pki secrets engine to issue certificates with a maximum time-to-live (TTL) of 8760h hours (1 year).
+Tune the pki secrets engine to issue certificates with a maximum time-to-live (TTL) of 87600h hours (10 year).
 
 ```
-vault secrets tune -max-lease-ttl=8760h pki
+vault secrets tune -max-lease-ttl=87600h pki
 ```
 
 Generate the root CA, give it an issuer name, and save its certificate in the file `root-ca-2023.crt`:
@@ -86,16 +86,14 @@ vault write pki/config/urls \
 Check insuing certificates url:
 
 ```
-curl $VAULT_ADDR/v1/pki/ca --output ca.der
-openssl x509 -inform DER -in ca.der -outform PEM -out ca.pem
+curl $VAULT_ADDR/v1/pki/ca/pem --output ca.pem
 openssl x509 -in ca.pem -noout -text
 ```
 
 Check CRL distribution points:
 
 ```
-curl $VAULT_ADDR/v1/pki/crl --output crl.der
-openssl crl -inform DER -in crl.der -outform PEM -out crl.pem
+curl $VAULT_ADDR/v1/pki/crl/pem --output crl.pem
 openssl crl -in crl.pem -noout -text
 ```
 
@@ -114,6 +112,14 @@ Tune the pki_int secrets engine to issue certificates with a maximum time-to-liv
 
 ```
 vault secrets tune -max-lease-ttl=8760h pki_int
+```
+
+Configure the chain CA and CRL URLs:
+
+```
+vault write pki_int/config/urls \
+     issuing_certificates="$VAULT_ADDR/v1/pki_int/ca" \
+     crl_distribution_points="$VAULT_ADDR/v1/pki_int/crl"
 ```
 
 Execute the following command to generate an intermediate and save the CSR as `intermediate-ca.csr`:
@@ -164,14 +170,6 @@ vault write pki_int/roles/intermediate-ca \
      max_ttl="72h"
 ```
 
-Configure the chain CA and CRL URLs:
-
-```
-vault write pki_int/config/urls \
-     issuing_certificates="$VAULT_ADDR/v1/pki_int/ca" \
-     crl_distribution_points="$VAULT_ADDR/v1/pki_int/crl"
-```
-
 <a name="request-certificates"/>
 
 ## Request certificates
@@ -209,8 +207,7 @@ vault write pki_int/revoke serial_number="<serial_number>"
 Check CRL distribution points:
 
 ```
-curl --header "X-Vault-Token: $VAULT_TOKEN" $VAULT_ADDR/v1/pki_int/crl --output crl-int.der
-openssl crl -inform DER -in crl-int.der -outform PEM -out crl-int.pem
+curl --header "X-Vault-Token: $VAULT_TOKEN" $VAULT_ADDR/v1/pki_int/crl/pem --output crl-int.pem
 openssl crl -in crl-int.pem -noout -text
 ```
 
