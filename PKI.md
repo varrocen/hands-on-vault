@@ -40,7 +40,7 @@ Tune the pki secrets engine to issue certificates with a maximum time-to-live (T
 vault secrets tune -max-lease-ttl=8760h pki
 ```
 
-Generate the root CA, give it an issuer name, and save its certificate in the file root-ca-2023.crt:
+Generate the root CA, give it an issuer name, and save its certificate in the file `root-ca-2023.crt`:
 
 ```
 vault write -field=certificate pki/root/generate/internal \
@@ -75,7 +75,7 @@ vault write pki/roles/root-ca-2023 \
     allow_subdomains=true
 ```
 
-Configure the CA and CRL URLs:
+Configure the chain CA and CRL URLs:
 
 ```
 vault write pki/config/urls \
@@ -104,6 +104,74 @@ openssl crl -in crl.pem -noout -text
 ## Generate intermediate CA
 
 <a name="request-certificates"/>
+
+Enable the pki secrets engine at the pki_int path:
+
+```
+vault secrets enable -path=pki_int pki
+```
+
+Tune the pki_int secrets engine to issue certificates with a maximum time-to-live (TTL) of 8760h hours (1 year).
+
+```
+vault secrets tune -max-lease-ttl=8760h pki_int
+```
+
+Execute the following command to generate an intermediate and save the CSR as `intermediate-ca.csr`:
+
+```
+vault write -format=json pki_int/intermediate/generate/internal \
+     common_name="Intermediate CA" \
+     issuer_name="intermediate-ca" \
+     | jq -r '.data.csr' > intermediate-ca.csr
+```
+
+Read the intermediate CA certificate signing request:
+
+```
+openssl req -in intermediate-ca.csr -noout -text
+```
+
+Sign the intermediate certificate with the root CA private key, and save the generated certificate as `intermediate-ca.pem`.
+
+```
+vault write -format=json pki/root/sign-intermediate \
+     issuer_ref="root-ca-2023" \
+     csr=@intermediate-ca.csr \
+     format=pem_bundle \
+     ttl="8760h" \
+     | jq -r '.data.certificate' > intermediate-ca.pem
+```
+
+Once the CSR is signed and the root CA returns a certificate, it can be imported back into Vault:
+
+```
+vault write pki_int/intermediate/set-signed certificate=@intermediate-ca.pem
+```
+
+Read the intermediate CA certificate:
+
+```
+openssl x509 -in intermediate-ca.pem -noout -text
+```
+
+Create a role for the intermediate CA:
+
+```
+vault write pki_int/roles/intermediate-ca \
+     issuer_ref="$(vault read -field=default pki_int/config/issuers)" \
+     allowed_domains="example.com" \
+     allow_subdomains=true \
+     max_ttl="72h"
+```
+
+Configure the chain CA and CRL URLs:
+
+```
+vault write pki_int/config/urls \
+     issuing_certificates="$VAULT_ADDR/v1/pki_int/ca" \
+     crl_distribution_points="$VAULT_ADDR/v1/pki_int/crl"
+```
 
 ## Request certificates
 
