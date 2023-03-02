@@ -217,3 +217,44 @@ openssl crl -in crl-int.pem -noout -text
 <a name="rotate-root-ca"/>
 
 ## Rotate Root CA
+
+Enable another root CA in the existing PKI secrets engine mount:
+
+```
+vault write pki/root/rotate/internal \
+    common_name="Root CA" \
+    issuer_name="root-ca-2024"
+```
+
+Create a role for the new example.com root CA:
+
+```
+vault write pki/roles/root-ca-2024 \
+    allowed_domains=example.com \
+    allow_subdomains=true
+```
+
+The new root CA certificate can be deployed to all devices which require it as part of rotating out the old root CA.
+
+After your defined cutoff point for the old root CA, and after you have distributed the new root CA to all devices, you'll want to switch the default issuer to the new root CA.
+
+```
+vault write pki/root/replace default=root-ca-2024
+```
+
+The last step is to sunset the old root CA.
+
+You can effectively sunset the old root CA by removing its ability to issue certificates, while preserving the ability to sign CRLs and revoke certificates.
+
+```
+vault write pki/issuer/root-ca-2023 \
+      issuer_name="root-ca-2023" \
+      usage=read-only,crl-signing
+```
+
+You can confirm this by attempting to issue a certificate directly from the old root CA.
+
+```
+vault write pki/issuer/root-ca-2023/issue/root-ca-2023 \
+    common_name="example.com"
+```
